@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from statistics import mode
 import numpy as np
 from tqdm import tqdm
+import pickle
 
 def handle_sub_directory(repo_name):
     global packets
@@ -103,11 +104,8 @@ if __name__ == "__main__":
             plt.show()
 
             total_count = sum(c.values())
-
-            # Calculate mean
             mean_value = sum(value * count for value, count in c.items()) / total_count
 
-            # Calculate median
             sorted_values = sorted(c.items())
             cumulative_counts = 0
             median_value = None
@@ -134,5 +132,8 @@ if __name__ == "__main__":
             mode_value = max(c.items(), key=lambda item: item[1])[0]
             min_value = min(c.keys())
             max_value = max(c.keys())
-            print(f"Version {ver} Stats:\n Repos: {total_count} Mean: {mean_value} Min: {min_value} Max: {max_value} Median: {median_value} Mode: {mode_value}")
+            print(f'Version {ver} Stats:\n Repos: {total_count} Mean: {mean_value} Min: {min_value} Max: {max_value} Median: {median_value} Mode: {mode_value}')
+            with open(f'version_{ver}.pkl', 'wb') as file:
+                pickle.dump(c, file)
+
         ver += 1
