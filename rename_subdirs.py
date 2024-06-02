@@ -4,6 +4,7 @@ from scapy.all import rdpcap
 import matplotlib.pyplot as plt
 from statistics import mode
 import numpy as np
+from tqdm import tqdm
 
 def handle_sub_directory(repo_name):
     global packets
@@ -29,22 +30,40 @@ def handle_sub_directory(repo_name):
                 new_ver = ""
                 if ver_from_json == "latest":
                     new_ver = ver_from_json
-                    packets[4].append(n)
+                    if n in packets[4]:
+                        packets[4][n] += 1
+                    else: 
+                        packets[4][n] = 1
                 elif ver_from_json == "7.0":
                     new_ver = "seven"
-                    packets[4].append(n)
+                    if n in packets[4]:
+                        packets[4][n] += 1
+                    else: 
+                        packets[4][n] = 1
                 elif ver_from_json == "6.0":
                     new_ver = "six"
-                    packets[3].append(n)
+                    if n in packets[3]:
+                        packets[3][n] += 1
+                    else: 
+                        packets[3][n] = 1
                 elif ver_from_json == "5.0":
                     new_ver = "five"
-                    packets[2].append(n)
+                    if n in packets[2]:
+                        packets[2][n] += 1
+                    else: 
+                        packets[2][n] = 1
                 elif ver_from_json == "4.0":
                     new_ver = "four"
-                    packets[1].append(n)
+                    if n in packets[1]:
+                        packets[1][n] += 1
+                    else: 
+                        packets[1][n] = 1
                 elif ver_from_json == "3.0":
                     new_ver = "three"
-                    packets[0].append(n)
+                    if n in packets[0]:
+                        packets[0][n] += 1
+                    else: 
+                        packets[0][n] = 1
                 else:
                     print("Unable to determine version.")
                 if not new_ver == "":
@@ -66,20 +85,54 @@ if __name__ == "__main__":
     # First get the list of all the repo directories
     # Use this python script INSIDE of the directory with all the repo subdirectories
     repo_dir_list = os.listdir(path='.')
-    packets = [[],[],[],[],[]]
+    #packets = [[],[],[],[],[]]
+    packets = [{}, {}, {}, {}, {}]
 
     # Step down into each of those repo directories, step into each of their subdirectories
-    for repo in repo_dir_list:
+    for repo in tqdm(repo_dir_list):
         handle_sub_directory(repo)
 
     ver = 3
     for c in packets:
         if len(c) != 0:
-            c = list(filter(lambda x: x > 0 and x < 100, c))
-            plt.hist(c, bins=10, edgecolor='black')
+            # c = list(filter(lambda x: x > 0 and x < 100, c))
+            plt.bar(list(c.keys()), list(c.values()), color='g')
             plt.title('Version ' + str(ver) + ' Packets')
             plt.xlabel('Value')
             plt.ylabel('Frequency')
             plt.show()
-            print(f"Version {ver} Stats:\n Repos: {len(c)} Mean: {sum(c)/float(len(c))} Min: {min(c)} Max: {max(c)} Median: {c[int(len(c)/2)]} Mode: {mode(c)}")
+
+            total_count = sum(c.values())
+
+            # Calculate mean
+            mean_value = sum(value * count for value, count in c.items()) / total_count
+
+            # Calculate median
+            sorted_values = sorted(c.items())
+            cumulative_counts = 0
+            median_value = None
+
+            if total_count % 2 == 1:  # Odd number of elements
+                middle = total_count // 2
+                for value, count in sorted_values:
+                    cumulative_counts += count
+                    if cumulative_counts > middle:
+                        median_value = value
+                        break
+            else:  # Even number of elements
+                middle1 = total_count // 2 - 1
+                middle2 = total_count // 2
+                for value, count in sorted_values:
+                    cumulative_counts += count
+                    if cumulative_counts > middle1 and median_value is None:
+                        median1 = value
+                    if cumulative_counts > middle2:
+                        median2 = value
+                        median_value = (median1 + median2) / 2
+                        break
+
+            mode_value = max(c.items(), key=lambda item: item[1])[0]
+            min_value = min(c.keys())
+            max_value = max(c.keys())
+            print(f"Version {ver} Stats:\n Repos: {total_count} Mean: {mean_value} Min: {min_value} Max: {max_value} Median: {median_value} Mode: {mode_value}")
         ver += 1
