@@ -4,6 +4,7 @@ from scapy.all import rdpcap
 import matplotlib.pyplot as plt
 from statistics import mode
 import numpy as np
+from tqdm import tqdm
 
 def handle_sub_directory(repo_name):
     global packets
@@ -69,7 +70,7 @@ if __name__ == "__main__":
     packets = [[],[],[],[],[]]
 
     # Step down into each of those repo directories, step into each of their subdirectories
-    for repo in repo_dir_list:
+    for repo in tqdm(repo_dir_list):
         handle_sub_directory(repo)
 
     ver = 3
