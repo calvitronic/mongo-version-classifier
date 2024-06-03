@@ -27,7 +27,7 @@ def handle_sub_directory(repo_name):
         # Maybe we should make this togglable; pcapngs apparenlty contain more information than regular pcaps
         # so we'd technically be throwing out some data
         if os.path.isfile(pcap_fp):
-            subprocess.run(["tshark", "-F", "-r", pcap_fp, "-w", pcap_fp])
+            subprocess.run(["tshark", "-F", "-r", pcap_fp, "-w", pcap_fp], stdout = subprocess.DEVNULL)
         n = num_packets(pcap_fp)
         condition_fp = os.path.join(vers, 'condition.json')
         if os.path.isfile(condition_fp):
