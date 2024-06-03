@@ -15,6 +15,8 @@ def handle_sub_directory(repo_name):
     if not os.path.isdir(repo_rel_path):
         return
     old_version_names = os.listdir(path=repo_rel_path)
+    if ".DS_Store" in old_version_names:
+        old_version_names.remove(".DS_Store")
     
     # Sloppy, but it does the job
     for ind in range(len(old_version_names)):
