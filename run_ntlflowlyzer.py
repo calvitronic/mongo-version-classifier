@@ -51,7 +51,7 @@ def handle_sub_directory(repo_name):
                 else:
                     print("Unable to determine version.")
                 # Now that we have the version, let's build the json
-                config_to_json = {"pcap_file_address": pcap_fp, "output_file_address": os.path.join("..", os.path.join("csvs", repo_name + new_ver + ".csv"), "label": new_ver)}
+                config_to_json = {"pcap_file_address": pcap_fp, "output_file_address": os.path.join("..", os.path.join("csvs", repo_name + new_ver + ".csv")), "label": new_ver}
                 with open('tmp_file.json', 'w') as jfile:
                     json.dump(config_to_json, jfile)
                 prog = subprocess.run(["ntlflowlyzer", "-c", "tmp_file.json"], stdout=subprocess.DEVNULL)
