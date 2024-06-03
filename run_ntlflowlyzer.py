@@ -22,6 +22,8 @@ def handle_sub_directory(repo_name):
     # Iterate through those subdirectories, load the conditions.json, and retrieve the version
     for vers in old_version_names:
         pcap_fp = os.path.join(vers, 'tempytrnld.pcap')
+        if (not os.path.isfile(pcap_fp)) or (os.path.getsize(pcap_fp) < 25):
+            continue
         condition_fp = os.path.join(vers, 'condition.json')
         if os.path.isfile(condition_fp):
             with open(os.path.join(vers, 'condition.json'), 'r') as jfile:
@@ -49,10 +51,10 @@ def handle_sub_directory(repo_name):
                 else:
                     print("Unable to determine version.")
                 # Now that we have the version, let's build the json
-                config_to_json = {"pcap_file_address": pcap_fp, "output_file_address": os.path.join("..", os.path.join("csvs", repo_name + os.path.split(vers)[1]))}
+                config_to_json = {"pcap_file_address": pcap_fp, "output_file_address": os.path.join("..", os.path.join("csvs", repo_name + new_ver + ".csv"), "label": new_ver)}
                 with open('tmp_file.json', 'w') as jfile:
                     json.dump(config_to_json, jfile)
-                subprocess.run(["ntlflowlyzer", "-c", "tmp_file.json"])
+                prog = subprocess.run(["ntlflowlyzer", "-c", "tmp_file.json"], stdout=subprocess.DEVNULL)
                 
     return
 

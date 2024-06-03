@@ -16,6 +16,8 @@ def handle_sub_directory(repo_name):
     if not os.path.isdir(repo_rel_path):
         return
     old_version_names = os.listdir(path=repo_rel_path)
+    if ".DS_Store" in old_version_names:
+        old_version_names.remove(".DS_Store")
     
     # Sloppy, but it does the job
     for ind in range(len(old_version_names)):
@@ -27,7 +29,7 @@ def handle_sub_directory(repo_name):
         # Maybe we should make this togglable; pcapngs apparenlty contain more information than regular pcaps
         # so we'd technically be throwing out some data
         if os.path.isfile(pcap_fp):
-            subprocess.run(["tshark", "-F", "-r", pcap_fp, "-w", pcap_fp], stdout = subprocess.DEVNULL)
+            subprocess.run(["tshark", "-F", "pcap", "-r", pcap_fp, "-w", pcap_fp], stdout = subprocess.DEVNULL)
         n = num_packets(pcap_fp)
         condition_fp = os.path.join(vers, 'condition.json')
         if os.path.isfile(condition_fp):
