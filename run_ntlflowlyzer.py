@@ -9,7 +9,6 @@ import pickle
 import subprocess
 
 def handle_sub_directory(repo_name):
-    global packets
     # Get a list of this one's subdirectories
     repo_rel_path = os.path.join('.', repo_name)
     if not os.path.isdir(repo_rel_path):
@@ -49,6 +48,11 @@ def handle_sub_directory(repo_name):
                     
                 else:
                     print("Unable to determine version.")
+                # Now that we have the version, let's build the json
+                config_to_json = {"pcap_file_address": pcap_fp, "output_file_address": os.path.join("..", os.path.join("csvs", repo_name + os.path.split(vers)[1]))}
+                with open('tmp_file.json', 'w') as jfile:
+                    json.dump(config_to_json, jfile)
+                subprocess.run(["ntlflowlyzer", "-c", "tmp_file.json"])
                 
     return
 
@@ -68,8 +72,6 @@ if __name__ == "__main__":
     # Use this python script INSIDE of the directory with all the repo subdirectories
     repo_dir_list = os.listdir(path='.')
     csv_directory = os.path.join("..", "csvs")
-    #packets = [[],[],[],[],[]]
-    packets = [{}, {}, {}, {}, {}]
 
     # Step down into each of those repo directories, step into each of their subdirectories
     for repo in tqdm(repo_dir_list):
