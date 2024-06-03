@@ -6,6 +6,7 @@ from statistics import mode
 import numpy as np
 from tqdm import tqdm
 import pickle
+import subprocess
 
 def handle_sub_directory(repo_name):
     global packets
@@ -22,7 +23,12 @@ def handle_sub_directory(repo_name):
 
     # Iterate through those subdirectories, load the conditions.json, and retrieve the version
     for vers in old_version_names:
-        n = num_packets(os.path.join(vers, 'tempytrnld.pcap'))
+        pcap_fp = os.path.join(vers, 'tempytrnld.pcap')
+        # Maybe we should make this togglable; pcapngs apparenlty contain more information than regular pcaps
+        # so we'd technically be throwing out some data
+        if os.path.isfile(pcap_fp):
+            subprocess.run(["tshark", "-F", "-r", pcap_fp, "-w", pcap_fp])
+        n = num_packets(pcap_fp)
         condition_fp = os.path.join(vers, 'condition.json')
         if os.path.isfile(condition_fp):
             with open(os.path.join(vers, 'condition.json'), 'r') as jfile:
