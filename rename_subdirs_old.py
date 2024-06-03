@@ -76,7 +76,7 @@ if __name__ == "__main__":
     ver = 3
     for c in packets:
         if len(c) != 0:
-            c = list(filter(lambda x: x > 0 and x < 1000, c))
+            c = list(filter(lambda x: x > 0, c))
             plt.hist(c, bins=10, edgecolor='black')
             plt.title('Version ' + str(ver) + ' Packets')
             plt.xlabel('Value')
