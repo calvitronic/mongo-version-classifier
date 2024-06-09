@@ -7,6 +7,9 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, f1_score
 
+# Define a random seed so results are reproducable...
+torch_random_seed = 42
+
 # Define the Feedforward Neural Network Model
 class FFN(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -58,6 +61,9 @@ def map_text_to_number(text):
     }
     return mapping.get(text, -1)
 
+# Create the device to use
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+
 # Initialize the Dataset and DataLoader
 csv_file = 'Master_CSV_Low_Variance_Removed.csv'  # replace with your CSV file path
 dataset = CSVDataset(csv_file)
@@ -65,9 +71,11 @@ dataset = CSVDataset(csv_file)
 # Split the dataset into training and testing
 train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+# train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+train_dataset, validation_dataset, test_dataset = torch.utils.data.random_split(dataset, [0.8, 0.05, 0.15])
 
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+val_loader = DataLoader(validation_dataset, batch_size=1)
 test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
 
@@ -75,15 +83,24 @@ test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 input_dim = dataset.features.shape[1]  # number of input features
 output_dim = 5  # number of output dimensions
 model = FFN(input_dim, output_dim)
+model.to(device)
 criterion = nn.CrossEntropyLoss()  # Mean Squared Error Loss for regression
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
+# Keep track of loss statistics with a dictionary of lists...
+loss_stats = {'training': [], 'validation': []}
+
 # Define the Training Loop
 def train(model, train_loader, criterion, optimizer, epochs=20):
-    model.train()
+    
     for epoch in range(epochs):
+        model.train()
         running_loss = 0.0
+        validation_loss = 0.0
+        # Work with training set
         for features, labels in train_loader:
+            # Send them to gpu if you can!
+            features, labels = features.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(features)
             # print(outputs)
@@ -93,7 +110,25 @@ def train(model, train_loader, criterion, optimizer, epochs=20):
             optimizer.step()
             running_loss += loss.item()
         
-        print(f'Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}')
+        # Done with training for the epoch; let's evaluate now.
+        with torch.no_grad():
+            # switch model to eval mode for the time being
+            model.eval()
+            for features, labels in val_loader:
+                # Again, send to gpu if possible
+                features, labels = features.to(device), labels.to(device)
+                outputs = model(features)
+                loss = criterion(outputs, labels)
+                
+                validation_loss += loss.item()
+        
+        total_running_loss = running_loss/len(train_loader)
+        total_validation_loss = validation_loss/len(val_loader)
+
+        loss_stats['training'].append(total_running_loss)
+        loss_stats['validation'].append(total_validation_loss)
+        
+        print(f'Epoch [{epoch+1}/{epochs}] | Loss: {total_running_loss:.4f} | Validation Loss: {total_validation_loss:.4f}')
 
 # Define the Evaluation Loop
 def evaluate(model, test_loader):
@@ -102,12 +137,18 @@ def evaluate(model, test_loader):
     predictions = []
     with torch.no_grad():
         for features, labels in test_loader:
+            # One last time: send things to gpu if you can
+            features, labels = features.to(device), labels.to(device)
             outputs = model(features)
             actuals.append(labels[0])
             predictions.append(outputs[0])
     
     #print(F.softmax(predictions[0]))
+    # actuals = actuals.to("cpu")
+    # predictions = predictions.to("cpu")
     predictions = [torch.softmax(pred, dim=-1) for pred in predictions]
+    actuals = [x.to("cpu") for x in actuals]
+    predictions = [pred.to("cpu") for pred in predictions]
     actuals = np.array(actuals)
     predictions = np.array(predictions)
 
@@ -128,7 +169,14 @@ def evaluate(model, test_loader):
 
 
 # Train the model
-train(model, train_loader, criterion, optimizer, epochs=30)
+train(model, train_loader, criterion, optimizer, epochs=50)
 
 # Evaluate the model
 evaluate(model, test_loader)
+
+# Save the model weights / results... maybe make it toggleable
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    'loss': loss_stats
+}, "./model_checkpoint_out_1.tar")
