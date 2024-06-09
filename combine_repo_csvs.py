@@ -48,7 +48,7 @@ def combine_csv_files(directory_path, output_file):
     print(f"Filtered combined CSV saved to {output_file}")
 
 # Example usage
-variance_threshold = 5.0
+variance_threshold = 20.0
 directory_path = '../all_versions/csvs'
-output_file = 'combined_repos_output_remove_mid_var.csv'
+output_file = 'combined_repos_output_remove_20_var.csv'
 combine_csv_files(directory_path, output_file)

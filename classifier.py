@@ -1,23 +1,28 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, precision_score, f1_score
 
 # Define the Feedforward Neural Network Model
 class FFN(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(FFN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, output_dim)
+        self.fc1 = nn.Linear(input_dim, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 32)
+        self.fc5 = nn.Linear(32, output_dim)
     
     def forward(self, x):
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = torch.relu(self.fc3(x))
+        x = torch.relu(self.fc4(x))
+        x = self.fc5(x)
         return x
 
 # Custom Dataset
@@ -25,17 +30,33 @@ class CSVDataset(Dataset):
     def __init__(self, csv_file):
         self.data = pd.read_csv(csv_file)
         # Ensure all feature values are numeric
-        self.features = self.data.iloc[:, :-5].apply(pd.to_numeric, errors='coerce').fillna(0).values
+        # Needs to be modified to take into account feature values are now alphabetic...
+        self.features = torch.from_numpy(self.data.select_dtypes(include=['number']).fillna(0).values)
+        #self.features = self.data.iloc[:, :-5].apply(pd.to_numeric, errors='coerce').fillna(0).values
         # Ensure all label values are numeric
-        self.labels = self.data.iloc[:, -5:].apply(pd.to_numeric, errors='coerce').fillna(0).values
+        self.labels = F.one_hot(torch.from_numpy(self.data['label'].apply(map_text_to_number).values))
+        # Legacy method of grabbing labels
+        # self.labels = self.data['label'] #.iloc[:, -5:].apply(pd.to_numeric, errors='coerce').fillna(0).values
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        sample = torch.tensor(self.features[idx], dtype=torch.float32)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32)
+        #sample = torch.tensor(self.features[idx], dtype=torch.float32)
+        sample = self.features[idx].to(dtype=torch.float32).clone().detach()
+        #label = torch.tensor(self.labels[idx], dtype=torch.float32)
+        label = self.labels[idx].to(dtype=torch.float32).clone().detach()
         return sample, label
+
+def map_text_to_number(text):
+    mapping = {
+        "three": 0,
+        "four": 1,
+        "five": 2,
+        "six": 3,
+        "seven": 4
+    }
+    return mapping.get(text, -1)
 
 # Initialize the Dataset and DataLoader
 csv_file = 'Master_CSV_Low_Variance_Removed.csv'  # replace with your CSV file path
@@ -47,24 +68,27 @@ test_size = len(dataset) - train_size
 train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
 
 train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
+
 
 # Initialize the Model, Loss Function, and Optimizer
 input_dim = dataset.features.shape[1]  # number of input features
 output_dim = 5  # number of output dimensions
 model = FFN(input_dim, output_dim)
-criterion = nn.MSELoss()  # Mean Squared Error Loss for regression
+criterion = nn.CrossEntropyLoss()  # Mean Squared Error Loss for regression
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Define the Training Loop
-def train(model, train_loader, criterion, optimizer, epochs=5):
+def train(model, train_loader, criterion, optimizer, epochs=20):
     model.train()
     for epoch in range(epochs):
         running_loss = 0.0
         for features, labels in train_loader:
             optimizer.zero_grad()
             outputs = model(features)
+            # print(outputs)
             loss = criterion(outputs, labels)
+            # print(loss)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -79,17 +103,32 @@ def evaluate(model, test_loader):
     with torch.no_grad():
         for features, labels in test_loader:
             outputs = model(features)
-            actuals.append(labels.numpy())
-            predictions.append(outputs.numpy())
+            actuals.append(labels[0])
+            predictions.append(outputs[0])
     
-    actuals = np.vstack(actuals)
-    predictions = np.vstack(predictions)
+    #print(F.softmax(predictions[0]))
+    predictions = [torch.softmax(pred, dim=-1) for pred in predictions]
+    actuals = np.array(actuals)
+    predictions = np.array(predictions)
+
+    actuals = np.argmax(actuals, axis=1).reshape(-1, 1)
+    predictions = np.argmax(predictions, axis=1).reshape(-1, 1)
+
+    actuals = np.squeeze(actuals)
+    predictions = np.squeeze(predictions)
+    
+    print(f"After squeezing predictions:\n{predictions}")
+    print(f"After squeezing actuals:\n{actuals}")
+
+    accuracy = accuracy_score(actuals, predictions)
+    precision = precision_score(actuals, predictions, average='weighted')
+    f1 = f1_score(actuals, predictions, average='weighted')
+    print(f'Accuracy: {accuracy}, Precision: {precision}, F1-Score: {f1}')
+
+
 
 # Train the model
-train(model, train_loader, criterion, optimizer, epochs=5)
+train(model, train_loader, criterion, optimizer, epochs=30)
 
 # Evaluate the model
 evaluate(model, test_loader)
-
-
-
