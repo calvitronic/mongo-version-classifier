@@ -16,6 +16,10 @@ from sklearn.metrics import confusion_matrix, classification_report
 
 from trustee import ClassificationTrustee
 
+import graphviz
+
+from sklearn import tree
+
 
 
 class MulticlassClassification(nn.Module):
@@ -77,8 +81,10 @@ class MultiClassModelWrapper():
             input = torch.tensor(input, dtype=torch.float32).to(device)
             result = self.model(input)
             _, predictions = torch.max(result, 1)
-            print(predictions.cpu().numpy())
-        return predictions.cpu().numpy()
+            # print(predictions.cpu().numpy())
+        result = predictions.cpu().numpy()
+        # print(f"Type of result: {type(result)}")
+        return result
 
     # def predict(self, input):
     #     input = input # Shut it up
@@ -107,9 +113,9 @@ class2idx = {
 
 idx2class = {v: k for k, v in class2idx.items()}
 # df['label'].replace(class2idx, inplace=True)
+X = df.select_dtypes(include=['number']).fillna(0)
 df['label'] = df['label'].replace(class2idx)
 
-X = df.select_dtypes(include=['number']).fillna(0)
 y = df['label']
 
 # Split into train+val and test
@@ -188,7 +194,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 2#15#300
+EPOCHS = 50#300
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0001
 NUM_FEATURES = len(X.columns)
@@ -315,7 +321,7 @@ print(classification_report(y_test, y_pred_list))
 test_model = MultiClassModelWrapper(model, device)
 
 trustee = ClassificationTrustee(expert=test_model)
-trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
+trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=False)
 # trustee.fit(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
 dt, pruned_dt, agreement, reward = trustee.explain()
 dt_y_pred = dt.predict(X_test)
@@ -324,3 +330,33 @@ print("Model explanation global fidelity report:")
 print(classification_report(y_pred_list, dt_y_pred))
 print("Model explanation score report:")
 print(classification_report(y_test, dt_y_pred))
+
+# # Get the best explanation from Trustee
+# dt, pruned_dt, agreement, reward = trustee.explain()
+# print(f"Model explanation training (agreement, fidelity): ({agreement}, {reward})")
+# print(f"Model Explanation size: {dt.tree_.node_count}")
+# print(f"Top-k Prunned Model explanation size: {pruned_dt.tree_.node_count}")
+
+# Output decision tree to pdf
+dot_data = tree.export_graphviz(
+    dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("dt_explanation")
+
+# Output pruned decision tree to pdf
+dot_data = tree.export_graphviz(
+    pruned_dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("pruned_dt_explation")
