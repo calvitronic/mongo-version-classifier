@@ -50,6 +50,39 @@ class MulticlassClassification(nn.Module):
         x = self.layer_out(x)
         
         return x
+    
+    
+
+class MultiClassModelWrapper():
+    # def __init__(self, model_in, device, dataload_in):
+    #     self.model = model_in
+    #     self.device = device
+    #     self.dataloader = dataload_in
+    def __init__(self, model_in, device):
+        self.model = model_in
+        self.device = device
+    
+    def predict(self, input):
+        result = np.array([])
+        with torch.no_grad():
+            self.model.eval()
+            input = torch.tensor(input, dtype=float)
+            result = self.model(input)
+        return result.numpy()
+
+    # def predict(self, input):
+    #     input = input # Shut it up
+    #     result = []
+    #     with torch.no_grad():
+    #         self.model.eval()
+    #         for X_batch, _ in self.dataloader:
+    #             X_batch = X_batch.to(self.device)
+    #             y_test_pred = self.model(X_batch)
+    #             _, y_pred_tags = torch.max(y_test_pred, dim = 1)
+    #             result.append(y_pred_tags.cpu().numpy())
+    #         result = [a.squeeze().tolist() for a in result]
+    #     return result
+
 
 
 df = pd.read_csv('Master_CSV_Low_Variance_Removed.csv')
@@ -142,7 +175,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 3#15#300
+EPOCHS = 2#15#300
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0007
 NUM_FEATURES = len(X.columns)
@@ -261,9 +294,12 @@ confusion_matrix_df = pd.DataFrame(confusion_matrix(y_test, y_pred_list)).rename
 
 print(classification_report(y_test, y_pred_list))
 
-trustee = ClassificationTrustee(expert=model)
+# test_model = MultiClassModelWrapper(model, device, train_loader)
+test_model = MultiClassModelWrapper(model, device)
 
-trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
+trustee = ClassificationTrustee(expert=test_model)
+trustee.fit(np.array(X_train), np.array(y_train), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
+# trustee.fit(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
 dt, pruned_dt, agreement, reward = trustee.explain()
 dt_y_pred = dt.predict(X_test)
 
