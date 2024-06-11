@@ -207,7 +207,7 @@ weighted_sampler = WeightedRandomSampler(
 
 EPOCHS = 200
 BATCH_SIZE = 16
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.005 #0.0001
 NUM_FEATURES = len(X.columns)
 NUM_CLASSES = 5
 
@@ -337,7 +337,7 @@ torch.save({
                     'optimizer_state_dict': optimizer.state_dict(),
                     'scheduler_state_dict': scheduler.state_dict(),
                     'loss': loss_stats
-                }, "./expert_model_decayingLR_checkpoint"
+                }, "./expert_model_decayingLR_3_checkpoint"
                 )
 
 # test_model = MultiClassModelWrapper(model, device, train_loader)
