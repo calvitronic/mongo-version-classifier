@@ -114,6 +114,8 @@ class2idx = {
 idx2class = {v: k for k, v in class2idx.items()}
 # df['label'].replace(class2idx, inplace=True)
 X = df.select_dtypes(include=['number']).fillna(0)
+X = X.drop(['dst_port', 'src_port'], axis=1)
+print(X.columns)
 df['label'] = df['label'].replace(class2idx)
 
 y = df['label']
@@ -321,7 +323,7 @@ print(classification_report(y_test, y_pred_list))
 test_model = MultiClassModelWrapper(model, device)
 
 trustee = ClassificationTrustee(expert=test_model)
-trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=False)
+trustee.fit(X_train, y_train, top_k=5, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=False)
 # trustee.fit(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
 dt, pruned_dt, agreement, reward = trustee.explain()
 dt_y_pred = dt.predict(X_test)
