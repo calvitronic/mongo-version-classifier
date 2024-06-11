@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 
 from sklearn.preprocessing import MinMaxScaler    
@@ -27,15 +28,18 @@ class MulticlassClassification(nn.Module):
         super(MulticlassClassification, self).__init__()
         
         self.layer_1 = nn.Linear(num_feature, 512)
-        self.layer_2 = nn.Linear(512, 128)
-        self.layer_3 = nn.Linear(128, 64)
+        self.layer_2 = nn.Linear(512, 256)
+        self.layer_3 = nn.Linear(256, 128)
+        self.layer_4 = nn.Linear(128, 64)
         self.layer_out = nn.Linear(64, num_class) 
         
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=0.2)
         self.batchnorm1 = nn.BatchNorm1d(512)
-        self.batchnorm2 = nn.BatchNorm1d(128)
-        self.batchnorm3 = nn.BatchNorm1d(64)
+        self.batchnorm2 = nn.BatchNorm1d(256)
+        self.batchnorm3 = nn.BatchNorm1d(128)
+        self.batchnorm4 = nn.BatchNorm1d(64)
+        
         
     def forward(self, x):
         x = self.layer_1(x)
@@ -49,6 +53,11 @@ class MulticlassClassification(nn.Module):
         
         x = self.layer_3(x)
         x = self.batchnorm3(x)
+        x = self.relu(x)
+        x = self.dropout(x)
+
+        x = self.layer_4(x)
+        x = self.batchnorm4(x)
         x = self.relu(x)
         x = self.dropout(x)
         
@@ -196,7 +205,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 50#300
+EPOCHS = 200
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0001
 NUM_FEATURES = len(X.columns)
@@ -217,6 +226,7 @@ model.to(device)
 
 criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+scheduler = MultiStepLR(optimizer, milestones=[100,150], gamma=0.1)
 # print(model)
 
 def multi_acc(y_pred, y_test):
@@ -257,6 +267,7 @@ for e in tqdm(range(1, EPOCHS+1)):
         
         train_loss.backward()
         optimizer.step()
+        scheduler.step()
         
         train_epoch_loss += train_loss.item()
         train_epoch_acc += train_acc.item()
@@ -315,9 +326,19 @@ y_pred_list = [a.squeeze().tolist() for a in y_pred_list]
 
 
 # Check the type of X_train and y_train
-print(f"X_train type: {type(X_train)}")
-print(f"y_train type: {type(y_train)}")
+# print(f"X_train type: {type(X_train)}")
+# print(f"y_train type: {type(y_train)}")
 print(classification_report(y_test, y_pred_list))
+
+
+torch.save({
+                    'epoch': EPOCHS,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'scheduler_state_dict': scheduler.state_dict(),
+                    'loss': loss_stats
+                }, "./expert_model_decayingLR_checkpoint"
+                )
 
 # test_model = MultiClassModelWrapper(model, device, train_loader)
 test_model = MultiClassModelWrapper(model, device)
