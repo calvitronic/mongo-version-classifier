@@ -48,7 +48,7 @@ def combine_csv_files(directory_path, output_file):
     print(f"Filtered combined CSV saved to {output_file}")
 
 # Example usage
-variance_threshold = 5.0
-directory_path = '../all_versions/csvs'
-output_file = 'combined_repos_output_remove_mid_var.csv'
+variance_threshold = 0.1
+directory_path = '../testtestversionmongoallbaseversionsnetcond3/csvs'
+output_file = 'combined_repos_output_varied_network_conditions_removed_01_variance.csv'
 combine_csv_files(directory_path, output_file)
