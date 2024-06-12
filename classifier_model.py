@@ -110,7 +110,22 @@ class MultiClassModelWrapper():
 
 
 
-df = pd.read_csv('Master_CSV_Low_Variance_Removed.csv')
+df = pd.read_csv('combined_repos_output_varied_network_conditions_removed_01_variance.csv')
+
+for ind in range(len(df['label'])):
+    old_label = df['label'][ind]
+    if "three" in old_label:
+        df.loc[:, ('label', ind)] = 'three'
+    elif "four" in old_label:
+        df.loc[:, ('label', ind)] = 'four'
+    elif "five" in old_label:
+        df.loc[:, ('label', ind)] = 'five'
+    elif "six" in old_label:
+        df.loc[:, ('label', ind)] = 'six'
+    elif "seven" in old_label:
+        df.loc[:, ('label', ind)] = 'seven'
+
+df.to_csv('combined_repos_output_varied_network_conditions_removed_01_variance.csv')
 
 class2idx = {
     'three':0,
@@ -337,7 +352,7 @@ torch.save({
                     'optimizer_state_dict': optimizer.state_dict(),
                     'scheduler_state_dict': scheduler.state_dict(),
                     'loss': loss_stats
-                }, "./expert_model_decayingLR_3_checkpoint"
+                }, "./expert_model_networkconds_decayingLR_1_checkpoint"
                 )
 
 # test_model = MultiClassModelWrapper(model, device, train_loader)
