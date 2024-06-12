@@ -207,7 +207,7 @@ weighted_sampler = WeightedRandomSampler(
 
 EPOCHS = 200
 BATCH_SIZE = 16
-LEARNING_RATE = 0.005 #0.0001
+LEARNING_RATE = 0.00001 #0.005 #0.0001
 NUM_FEATURES = len(X.columns)
 NUM_CLASSES = 5
 
