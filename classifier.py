@@ -13,7 +13,23 @@ import graphviz
 from sklearn import tree
 
 # Load data
-df = pd.read_csv('Master_CSV_Low_Variance_Removed.csv')
+df = pd.read_csv('../Second_LowVarRemoved.csv')
+
+# Fix label column
+# for ind in range(len(df['label'])):
+#     old_label = df['label'][ind]
+#     if "three" in old_label:
+#         df.at[ind, 'label'] = 'three'
+#     elif "four" in old_label:
+#         df.at[ind, 'label'] = 'four'
+#     elif "five" in old_label:
+#         df.at[ind, 'label'] = 'five'
+#     elif "six" in old_label:
+#         df.at[ind, 'label'] = 'six'
+#     elif "seven" in old_label:
+#         df.at[ind, 'label'] = 'seven'
+
+# df.to_csv('../First_Second_NoRemovals_Fixed.csv')
 
 # Label encoding
 class2idx = {
@@ -24,11 +40,11 @@ class2idx = {
     'seven':4
 }
 idx2class = {v: k for k, v in class2idx.items()}
-df['label'] = df['label'].replace(class2idx)
 
 # Prepare features and labels
 X = df.select_dtypes(include=['number']).fillna(0)
 X = X.drop(['dst_port', 'src_port'], axis=1)
+df['label'] = df['label'].replace(class2idx)
 y = df['label']
 
 # Split into train+val and test
