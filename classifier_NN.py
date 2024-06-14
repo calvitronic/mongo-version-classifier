@@ -68,8 +68,13 @@ class MultiClassModelWrapper():
         result = np.array([])
         with torch.no_grad():
             self.model.eval()
-            input = torch.tensor(input, dtype=float)
-            result = self.model(input)
+            input = input.to_numpy(dtype=np.float32)
+            # input = input.flatten()
+            tensor_in = torch.from_numpy(input)
+            # tensor_in = tensor_in.to(self.device)
+            # input = torch.tensor(input[0], dtype=float)
+            print(f"Input here is {tensor_in}")
+            result = self.model(tensor_in)
         return result.numpy()
 
     # def predict(self, input):
@@ -87,7 +92,23 @@ class MultiClassModelWrapper():
 
 
 
-df = pd.read_csv('../First_Second_NoRemovals.csv')
+df = pd.read_csv('./first_and_second_no_removal.csv')
+
+# Fix label column
+for ind in range(len(df['label'])):
+    old_label = df['label'][ind]
+    if "three" in old_label:
+        df.at[ind, 'label'] = 'three'
+    elif "four" in old_label:
+        df.at[ind, 'label'] = 'four'
+    elif "five" in old_label:
+        df.at[ind, 'label'] = 'five'
+    elif "six" in old_label:
+        df.at[ind, 'label'] = 'six'
+    elif "seven" in old_label:
+        df.at[ind, 'label'] = 'seven'
+
+df.to_csv('../First_Second_NoRemovals_Fixed.csv')
 
 class2idx = {
     'three':0,
@@ -106,6 +127,7 @@ df['label'] = df['label'].replace(class2idx)
 y = df['label']
 
 # Split into train+val and test
+print(f"y first two or so: {y[:2]}")
 X_trainval, X_test, y_trainval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
 # Split train into train-val
@@ -177,7 +199,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 10#15#300
+EPOCHS = 1#50#300
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0007
 NUM_FEATURES = len(X.columns)
@@ -297,7 +319,13 @@ confusion_matrix_df = pd.DataFrame(confusion_matrix(y_test, y_pred_list)).rename
 print(classification_report(y_test, y_pred_list))
 
 # test_model = MultiClassModelWrapper(model, device, train_loader)
+
+# Try sending model to cpu first
+model.to("cpu")
+
 test_model = MultiClassModelWrapper(model, device)
+
+print(f"First two values of y_train {y_train[:2]}")
 
 trustee = ClassificationTrustee(expert=test_model)
 trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2)
