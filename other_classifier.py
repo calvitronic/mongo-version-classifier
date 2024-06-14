@@ -15,6 +15,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 
 from trustee import ClassificationTrustee
+import graphviz
+from sklearn import tree
 
 
 class MulticlassClassification(nn.Module):
@@ -85,7 +87,7 @@ class MultiClassModelWrapper():
 
 
 
-df = pd.read_csv('Master_CSV_Low_Variance_Removed.csv')
+df = pd.read_csv('../First_Second_NoRemovals.csv')
 
 class2idx = {
     'three':0,
@@ -97,9 +99,10 @@ class2idx = {
 
 idx2class = {v: k for k, v in class2idx.items()}
 # df['label'].replace(class2idx, inplace=True)
-df['label'] = df['label'].replace(class2idx)
 
 X = df.select_dtypes(include=['number']).fillna(0)
+X = X.drop(['dst_port', 'src_port'], axis=1)
+df['label'] = df['label'].replace(class2idx)
 y = df['label']
 
 # Split into train+val and test
@@ -164,8 +167,7 @@ for _, t in train_dataset:
 target_list = torch.tensor(target_list)
 
 class_count = [i for i in get_class_distribution(y_train).values()]
-class_weights = 1./torch.tensor(class_count, dtype=torch.float) 
-print(class_weights)
+class_weights = 1./torch.tensor(class_count, dtype=torch.float)
 
 class_weights_all = class_weights[target_list]
 
@@ -175,7 +177,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 2#15#300
+EPOCHS = 10#15#300
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0007
 NUM_FEATURES = len(X.columns)
@@ -298,8 +300,7 @@ print(classification_report(y_test, y_pred_list))
 test_model = MultiClassModelWrapper(model, device)
 
 trustee = ClassificationTrustee(expert=test_model)
-trustee.fit(np.array(X_train), np.array(y_train), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
-# trustee.fit(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=True)
+trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2)
 dt, pruned_dt, agreement, reward = trustee.explain()
 dt_y_pred = dt.predict(X_test)
 
@@ -307,3 +308,27 @@ print("Model explanation global fidelity report:")
 print(classification_report(y_pred_list, dt_y_pred))
 print("Model explanation score report:")
 print(classification_report(y_test, dt_y_pred))
+
+# Output decision tree to pdf
+dot_data = tree.export_graphviz(
+    dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("dt_explanation")
+
+# Output pruned decision tree to pdf
+dot_data = tree.export_graphviz(
+    pruned_dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("pruned_dt_explanation")
