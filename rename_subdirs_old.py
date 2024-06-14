@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from statistics import mode
 import numpy as np
 from tqdm import tqdm
+from itertools import chain
 
 def handle_sub_directory(repo_name):
     global packets
@@ -79,6 +80,7 @@ if __name__ == "__main__":
     for c in packets:
         if len(c) != 0:
             c = list(filter(lambda x: x > 0, c))
+            c.sort()
             plt.hist(c, bins=10, edgecolor='black')
             plt.title('Version ' + str(ver) + ' Packets')
             plt.xlabel('Value')
@@ -86,3 +88,18 @@ if __name__ == "__main__":
             plt.show()
             print(f"Version {ver} Stats:\n Repos: {len(c)} Mean: {sum(c)/float(len(c))} Min: {min(c)} Max: {max(c)} Median: {c[int(len(c)/2)]} Mode: {mode(c)}")
         ver += 1
+
+    packets = list(chain.from_iterable(packets))
+    packets = list(filter(lambda x: x > 0, packets))
+    packets = np.array(packets)
+    packets = np.sort(packets)
+    cdf = np.arange(1, len(packets) + 1) / len(packets)
+    plt.figure(figsize=(8, 6))
+    plt.plot(packets, cdf, marker='.', linestyle='none')
+    plt.xlabel('Packets Captured')
+    plt.ylabel('CDF')
+    plt.title('Cumulative Distribution Function (CDF)')
+    plt.grid(True)
+    plt.show()
+    packets = list(packets)
+    print(f"Total Stats:\n Repos: {len(packets)} Mean: {sum(packets)/float(len(packets))} Min: {min(packets)} Max: {max(packets)} Median: {packets[int(len(packets)/2)]} Mode: {mode(packets)}")
