@@ -1,95 +1,111 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import pandas as pd
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score
+import pandas as pd
+import seaborn as sns
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
-# Define the Feedforward Neural Network Model
-class FFN(nn.Module):
-    def __init__(self, input_dim, output_dim):
-        super(FFN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 128)
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, output_dim)
-    
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import MinMaxScaler    
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report
+from trustee import ClassificationTrustee
+import graphviz
+from sklearn import tree
 
-# Custom Dataset
-class CSVDataset(Dataset):
-    def __init__(self, csv_file):
-        self.data = pd.read_csv(csv_file)
-        # Ensure all feature values are numeric
-        self.features = self.data.iloc[:, :-5].apply(pd.to_numeric, errors='coerce').fillna(0).values
-        # Ensure all label values are numeric
-        self.labels = self.data.iloc[:, -5:].apply(pd.to_numeric, errors='coerce').fillna(0).values
+# Load data
+df = pd.read_csv('../First_Second_NoRemovals.csv')
 
-    def __len__(self):
-        return len(self.data)
+# Fix label column
+# for ind in range(len(df['label'])):
+#     old_label = df['label'][ind]
+#     if "three" in old_label:
+#         df.at[ind, 'label'] = 'three'
+#     elif "four" in old_label:
+#         df.at[ind, 'label'] = 'four'
+#     elif "five" in old_label:
+#         df.at[ind, 'label'] = 'five'
+#     elif "six" in old_label:
+#         df.at[ind, 'label'] = 'six'
+#     elif "seven" in old_label:
+#         df.at[ind, 'label'] = 'seven'
 
-    def __getitem__(self, idx):
-        sample = torch.tensor(self.features[idx], dtype=torch.float32)
-        label = torch.tensor(self.labels[idx], dtype=torch.float32)
-        return sample, label
+# df.to_csv('../First_Second_NoRemovals_Fixed.csv')
 
-# Initialize the Dataset and DataLoader
-csv_file = 'Master_CSV_Low_Variance_Removed.csv'  # replace with your CSV file path
-dataset = CSVDataset(csv_file)
+# Label encoding
+class2idx = {
+    'three':0,
+    'four':1,
+    'five':2,
+    'six':3,
+    'seven':4
+}
+idx2class = {v: k for k, v in class2idx.items()}
 
-# Split the dataset into training and testing
-train_size = int(0.8 * len(dataset))
-test_size = len(dataset) - train_size
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
+# Prepare features and labels
+X = df.select_dtypes(include=['number']).fillna(0)
+X = X.drop(['dst_port', 'src_port'], axis=1)
+df['label'] = df['label'].replace(class2idx)
+y = df['label']
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+# Split into train+val and test
+X_trainval, X_test, y_trainval, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
 
-# Initialize the Model, Loss Function, and Optimizer
-input_dim = dataset.features.shape[1]  # number of input features
-output_dim = 5  # number of output dimensions
-model = FFN(input_dim, output_dim)
-criterion = nn.MSELoss()  # Mean Squared Error Loss for regression
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+# Split train into train-val
+X_train, X_val, y_train, y_val = train_test_split(X_trainval, y_trainval, test_size=0.1, stratify=y_trainval, random_state=21)
 
-# Define the Training Loop
-def train(model, train_loader, criterion, optimizer, epochs=5):
-    model.train()
-    for epoch in range(epochs):
-        running_loss = 0.0
-        for features, labels in train_loader:
-            optimizer.zero_grad()
-            outputs = model(features)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            running_loss += loss.item()
-        
-        print(f'Epoch [{epoch+1}/{epochs}], Loss: {running_loss/len(train_loader):.4f}')
+# Scale features
+scaler = MinMaxScaler()
+X_train = scaler.fit_transform(X_train)
+X_val = scaler.transform(X_val)
+X_test = scaler.transform(X_test)
 
-# Define the Evaluation Loop
-def evaluate(model, test_loader):
-    model.eval()
-    actuals = []
-    predictions = []
-    with torch.no_grad():
-        for features, labels in test_loader:
-            outputs = model(features)
-            actuals.append(labels.numpy())
-            predictions.append(outputs.numpy())
-    
-    actuals = np.vstack(actuals)
-    predictions = np.vstack(predictions)
+# Initialize random forest classifier
+model = RandomForestClassifier(n_estimators=100, random_state=42)
 
 # Train the model
-train(model, train_loader, criterion, optimizer, epochs=5)
+model.fit(X_train, y_train)
 
-# Evaluate the model
-evaluate(model, test_loader)
+# Evaluate the model on the validation set
+y_val_pred = model.predict(X_val)
+print("Validation classification report:")
+print(classification_report(y_val, y_val_pred))
 
+# Evaluate the model on the test set
+y_test_pred = model.predict(X_test)
+print("Test classification report:")
+print(classification_report(y_test, y_test_pred))
 
+# Initialize Trustee with the random forest model
+trustee = ClassificationTrustee(expert=model)
+trustee.fit(X_train, y_train, top_k=5, num_iter=50, num_stability_iter=10, samples_size=0.2, verbose=False)
+dt, pruned_dt, agreement, reward = trustee.explain()
+dt_y_pred = dt.predict(X_test)
 
+print("Model explanation global fidelity report:")
+print(classification_report(y_test_pred, dt_y_pred))
+print("Model explanation score report:")
+print(classification_report(y_test, dt_y_pred))
+
+# Output decision tree to pdf
+dot_data = tree.export_graphviz(
+    dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("dt_explanation")
+
+# Output pruned decision tree to pdf
+dot_data = tree.export_graphviz(
+    pruned_dt,
+    class_names=['three', 'four', 'five', 'six', 'seven'],
+    feature_names=X.columns,
+    filled=True,
+    rounded=True,
+    special_characters=True,
+)
+graph = graphviz.Source(dot_data)
+graph.render("pruned_dt_explanation")
