@@ -65,7 +65,7 @@ class MultiClassModelWrapper():
         self.device = device
     
     def predict(self, input):
-        result = np.array([])
+        result = torch.tensor([])
         with torch.no_grad():
             self.model.eval()
             input = input.to_numpy(dtype=np.float32)
@@ -73,8 +73,10 @@ class MultiClassModelWrapper():
             tensor_in = torch.from_numpy(input)
             # tensor_in = tensor_in.to(self.device)
             # input = torch.tensor(input[0], dtype=float)
-            print(f"Input here is {tensor_in}")
-            result = self.model(tensor_in)
+            # print(f"Input here is {tensor_in}")
+            temp = self.model(tensor_in)
+            _, result = torch.max(temp, dim = 1)
+            # print(f"Result here is {result}")
         return result.numpy()
 
     # def predict(self, input):
@@ -92,23 +94,23 @@ class MultiClassModelWrapper():
 
 
 
-df = pd.read_csv('./first_and_second_no_removal.csv')
+df = pd.read_csv('./first_and_second_no_removal_fixed.csv')
 
-# Fix label column
-for ind in range(len(df['label'])):
-    old_label = df['label'][ind]
-    if "three" in old_label:
-        df.at[ind, 'label'] = 'three'
-    elif "four" in old_label:
-        df.at[ind, 'label'] = 'four'
-    elif "five" in old_label:
-        df.at[ind, 'label'] = 'five'
-    elif "six" in old_label:
-        df.at[ind, 'label'] = 'six'
-    elif "seven" in old_label:
-        df.at[ind, 'label'] = 'seven'
+# # Fix label column
+# for ind in range(len(df['label'])):
+#     old_label = df['label'][ind]
+#     if "three" in old_label:
+#         df.at[ind, 'label'] = 'three'
+#     elif "four" in old_label:
+#         df.at[ind, 'label'] = 'four'
+#     elif "five" in old_label:
+#         df.at[ind, 'label'] = 'five'
+#     elif "six" in old_label:
+#         df.at[ind, 'label'] = 'six'
+#     elif "seven" in old_label:
+#         df.at[ind, 'label'] = 'seven'
 
-df.to_csv('../First_Second_NoRemovals_Fixed.csv')
+# df.to_csv('./first_and_second_var5_removal_fixed.csv')
 
 class2idx = {
     'three':0,
@@ -199,7 +201,7 @@ weighted_sampler = WeightedRandomSampler(
     replacement=True
 )
 
-EPOCHS = 1#50#300
+EPOCHS = 50#300
 BATCH_SIZE = 16
 LEARNING_RATE = 0.0007
 NUM_FEATURES = len(X.columns)
@@ -325,10 +327,11 @@ model.to("cpu")
 
 test_model = MultiClassModelWrapper(model, device)
 
-print(f"First two values of y_train {y_train[:2]}")
+# print(f"First two values of y_train {y_train[:2]}")
 
 trustee = ClassificationTrustee(expert=test_model)
-trustee.fit(X_train, y_train, num_iter=50, num_stability_iter=10, samples_size=0.2)
+# trustee.fit(X_train, y_train.to_numpy(), num_iter=50, num_stability_iter=10, samples_size=0.2)
+trustee.fit(X_train, y_train.astype(int), num_iter=50, num_stability_iter=10, samples_size=0.2)
 dt, pruned_dt, agreement, reward = trustee.explain()
 dt_y_pred = dt.predict(X_test)
 
