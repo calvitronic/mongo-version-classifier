@@ -8,6 +8,6 @@ We then ran UCSB's netMosaic platform with these repositories - first using 2 Mo
 
 Please run `rename_subdirs.py` on the results from netMosaic to rename the directories. Run `run_ntlflowlyzer.py` to get features from the netMosaic results. 
 
-After, please run `classifier_Neural_Network.py` on the features for the neural network model, and `classifier_RF.py` for the random forest model (MOVERC), using the three different datasets. The first dataset uses ~100 repositories with binary version classification, the second dataset uses ~300 repositories with multi-version classification (5 versions), and the last dataset combines the first and second datasets. Please run `combine_repo_csvs.py` to combine the datasets together. 
+After, please run `classifier_Neural_Network.py` on the features for the neural network model, and `classifier_RF.py` for the random forest model (MOVERC), using the three different datasets. The first dataset uses ~300 repositories with multi-version classification (5 versions), the second dataset uses ~100 repositories with 3 different network conditions, and the last dataset combines the first and second datasets. Please run `combine_repo_csvs.py` to combine the datasets together. 
 
 The resulting decision trees, *dt_explanation.pdf* and *pruned_dt_explanation.pdf*, from Trustee's output will automatically be saved in the same directory. 
