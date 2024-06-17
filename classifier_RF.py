@@ -15,22 +15,6 @@ from sklearn import tree
 # Load data
 df = pd.read_csv('../First_Second_NoRemovals.csv')
 
-# Fix label column
-# for ind in range(len(df['label'])):
-#     old_label = df['label'][ind]
-#     if "three" in old_label:
-#         df.at[ind, 'label'] = 'three'
-#     elif "four" in old_label:
-#         df.at[ind, 'label'] = 'four'
-#     elif "five" in old_label:
-#         df.at[ind, 'label'] = 'five'
-#     elif "six" in old_label:
-#         df.at[ind, 'label'] = 'six'
-#     elif "seven" in old_label:
-#         df.at[ind, 'label'] = 'seven'
-
-# df.to_csv('../First_Second_NoRemovals_Fixed.csv')
-
 # Label encoding
 class2idx = {
     'three':0,
