@@ -12,22 +12,21 @@ def handle_sub_directory(repo_name):
     global packets
     # Get a list of this one's subdirectories
     repo_rel_path = os.path.join('.', repo_name)
-    # print(repo_rel_path)
+
     if not os.path.isdir(repo_rel_path):
         return
     old_version_names = os.listdir(path=repo_rel_path)
     if ".DS_Store" in old_version_names:
         old_version_names.remove(".DS_Store")
     
-    # Sloppy, but it does the job
+
     for ind in range(len(old_version_names)):
         old_version_names[ind] = os.path.join(repo_rel_path, old_version_names[ind])
 
     # Iterate through those subdirectories, load the conditions.json, and retrieve the version
     for vers in old_version_names:
         pcap_fp = os.path.join(vers, 'tempytrnld.pcap')
-        # Maybe we should make this togglable; pcapngs apparenlty contain more information than regular pcaps
-        # so we'd technically be throwing out some data
+        
         if os.path.isfile(pcap_fp):
             subprocess.run(["tshark", "-F", "pcap", "-r", pcap_fp, "-w", pcap_fp], stdout = subprocess.DEVNULL)
         n = num_packets(pcap_fp)
@@ -92,9 +91,7 @@ def num_packets(pcap_file):
 
 if __name__ == "__main__":
     # First get the list of all the repo directories
-    # Use this python script INSIDE of the directory with all the repo subdirectories
     repo_dir_list = os.listdir(path='.')
-    #packets = [[],[],[],[],[]]
     packets = [{}, {}, {}, {}, {}]
 
     # Step down into each of those repo directories, step into each of their subdirectories
