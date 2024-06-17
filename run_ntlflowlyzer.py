@@ -15,7 +15,6 @@ def handle_sub_directory(repo_name):
         return
     old_version_names = os.listdir(path=repo_rel_path)
     
-    # Sloppy, but it does the job
     for ind in range(len(old_version_names)):
         old_version_names[ind] = os.path.join(repo_rel_path, old_version_names[ind])
 
@@ -71,7 +70,6 @@ def num_packets(pcap_file):
 
 if __name__ == "__main__":
     # First get the list of all the repo directories
-    # Use this python script INSIDE of the directory with all the repo subdirectories
     repo_dir_list = os.listdir(path='.')
     csv_directory = os.path.join("..", "csvs")
 
